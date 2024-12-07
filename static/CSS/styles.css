@@ -1,0 +1,37 @@
+/* Style des marqueurs */
+.marker-user {
+    background-color: green;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+.marker-other {
+    background-color: red;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+.marker-free {
+    background-color: blue;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+/* Autres styles */
+.tooltip-reserved {
+    background-color: lightgray;
+    color: black;
+    font-weight: bold;
+}
+
+.tooltip-available {
+    background-color: lightgreen;
+    color: black;
+    font-weight: bold;
+}

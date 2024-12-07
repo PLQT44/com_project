@@ -1,14 +1,20 @@
 import csv
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
+
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['STATIC_FOLDER'] = './static'
 db = SQLAlchemy(app)
+
+app.debug = True
 
 # Models
 class Member(db.Model):
@@ -23,6 +29,7 @@ class Member(db.Model):
 class Location(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    city = db.Column(db.String(100), nullable=False)
     address = db.Column(db.String(200), nullable=True)
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
@@ -47,6 +54,10 @@ def setup_database():
         load_locations_from_csv(points_csv)
 
 # API Endpoints
+@app.route('/')
+def home():
+    return render_template('index.html')
+
 @app.route('/locations', methods=['GET', 'POST'])
 def locations():
     if request.method == 'GET':
@@ -54,10 +65,12 @@ def locations():
         return jsonify([{
             'id': loc.id,
             'name': loc.name,
+            'city': loc.city,
             'address': loc.address,
             'latitude': loc.latitude,
             'longitude': loc.longitude,
-            'reserved_by': loc.reserved_by
+            'reserved_by': loc.reserved_by,
+            'is_reserved': loc.reserved_by is not None
         } for loc in locations])
     elif request.method == 'POST':
         data = request.json
@@ -67,6 +80,7 @@ def locations():
 
         location = Location(
             name=data['name'],
+            city=data['city'],
             address=data['address'],
             latitude=data['latitude'],
             longitude=data['longitude']
@@ -92,10 +106,10 @@ def reserved_locations():
 def reserve():
     data = request.json
     location = Location.query.get(data['location_id'])
-    if location and not location.reserved_by:
+    if location and location.reserved_by is None :
         location.reserved_by = data['member_id']
         db.session.commit()
-        return jsonify({'message': 'Location reserved successfully'})
+        return jsonify({'message': 'Location reserved successfully'}), 200
     return jsonify({'message': 'Location already reserved or not found'}), 400
 
 @app.route('/members', methods=['POST'])
@@ -113,6 +127,57 @@ def members():
     db.session.add(member)
     db.session.commit()
     return jsonify({'id': member.id}), 201
+
+@app.route('/members/verify', methods=['POST'])
+def verify_member():
+    data = request.json
+    logging.debug(f"Reçu les données pour vérification : {data}")
+    # Vérifie si le membre existe
+    member = Member.query.filter_by(first_name=data['first_name'], last_name=data['last_name']).first()
+    if member:
+        logging.debug(f"Membre trouvé : {member}")
+        return jsonify({'exists': True, 'id': member.id}), 200
+    logging.warning("Membre non trouvé")
+    return jsonify({'exists': False}), 404
+
+@app.route('/locations/user/<int:user_id>')
+def user_locations(user_id):
+    locations = Location.query.filter_by(reserved_by=user_id).all()
+    return jsonify([{
+        'id': loc.id,
+        'name': loc.name,
+        'address': loc.address
+    } for loc in locations])
+
+@app.route('/locations/unreserve/<int:location_id>', methods=['POST'])
+def unreserve_location(location_id):
+    location = Location.query.get(location_id)
+    if location and location.reserved_by:
+        location.reserved_by = None
+        db.session.commit()
+        return jsonify({'message': 'Location unreserved successfully'}), 200
+    return jsonify({'message': 'Location not found or not reserved'}), 400
+
+@app.route('/members/search', methods=['GET'])
+def search_members():
+    query = request.args.get('q', '').lower()
+    # Vérifier si une requête est passée
+    if not query:
+        return jsonify([])  # Retourne une liste vide si la requête est vide
+
+    # Rechercher les membres par prénom ou nom partiellement correspondants
+    members = Member.query.filter(
+        db.or_(
+            Member.first_name.ilike(f'%{query}%'),
+            Member.last_name.ilike(f'%{query}%')
+        )
+    ).all()
+
+     # Retourne les résultats sous forme JSON
+    return jsonify([
+        {'id': member.id, 'first_name': member.first_name, 'last_name': member.last_name}
+        for member in members
+    ])
 
 # Helper Functions
 def load_members_from_csv(filepath):
@@ -135,6 +200,7 @@ def load_locations_from_csv(filepath):
             if not Location.query.filter_by(name=row['name'], address=row['address']).first():
                 location = Location(
                     name=row['name'],
+                    city=row['city'],
                     address=row['address'],
                     latitude=float(row['latitude']),
                     longitude=float(row['longitude'])

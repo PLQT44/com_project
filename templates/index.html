@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Répartition des lieux d'affichage</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        .reserved {
+            color: gray;
+            text-decoration: line-through;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Répartition des lieux d'affichage</h1>
+
+        <button id="emailButton" class="btn btn-info mb-3">Question, suggestion, correction? Envoyez-moi un mail</button>
+
+        <div id="searchContainer">
+            <label id="searchLabel" for="searchName">Rechercher votre nom :</label>
+            <input type="text" id="searchName" class="form-control" placeholder="Entrez votre nom ou prénom">
+            <ul id="suggestions" class="list-group d-none"></ul>
+        </div>
+
+        <div id="registration" class="mb-4">
+            <label>Nom :</label>
+            <input type="text" id="lastName" class="form-control" />
+            <label>Prénom :</label>
+            <input type="text" id="firstName" class="form-control" />
+            <button id="registerBtn" class="btn btn-primary mt-2">S'inscrire</button>
+    </div>
+        
+    <div id="userInfo" class="alert alert-info d-none"></div>
+    <div id="map" style="height: 600px;"></div>
+    
+    <div>
+    <h3>Vos lieux réservés</h3>
+    <button id="printButton" class="btn btn-secondary mb-3">Imprimer</button>
+    <button id="downloadButton" class="btn btn-primary mb-3">Télécharger</button>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Localité</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="userReservations"></tbody>
+    </table>
+    </div>
+
+    <div>
+    <h3>Lieux disponibles</h3>
+    <table class="table mt-4">
+        <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Adresse</th>
+                    <th>Action</th>
+                </tr>
+        </thead>
+        <tbody id="locationsTable"></tbody>
+    </table>
+    </div>
+
+    <script>
+        let memberId = null;
+    
+        // Carte centrée sur Nantes
+        const map = L.map('map').setView([47.2184, -1.5536], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    
+        const blueIcon = L.icon({
+            iconUrl: '/static/images/marker-icon.png', // Icône bleue
+            shadowUrl: '/static/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const redIcon = L.icon({
+            iconUrl: '/static/images/marker-red.png', // Icône rouge
+            shadowUrl: '/static/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const greenIcon = L.icon({
+            iconUrl: '/static/images/marker-green.png', // Icône verte
+            shadowUrl: '/static/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        // Fonction pour charger les lieux
+        async function loadLocations() {
+
+            const response = await fetch('/locations');
+            const locations = await response.json();
+    
+            const locationsTable = document.getElementById('locationsTable');
+            locationsTable.innerHTML = ''; // clear existing rows
+            
+            // Efface tous les marqueurs existants de la carte
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            locations.forEach(loc => {
+                
+                // Ajouter un marqueur sur la carte
+                const marker = L.marker([loc.latitude, loc.longitude]).addTo(map);
+    
+                 // Ajouter un label (nom)
+                marker.bindTooltip(loc.name, {
+                    permanent: true, // Label par défaut masqué
+                    direction: 'top',
+                    offset: [0, -20],
+                    className: loc.is_reserved ? 'tooltip-reserved' : 'tooltip-available',
+                    opacity : 0
+                });
+                
+                // Afficher ou masquer les labels selon le zoom
+                map.on('zoomend', () => {
+                    const zoomLevel = map.getZoom();
+                    if (zoomLevel > 13) {
+                        marker.getTooltip().setOpacity(1); // Affiche le label
+                    } else {
+                        marker.getTooltip().setOpacity(0); // Cache le label
+                    }
+                });
+
+                // Activer ou désactiver les interactions selon le statut
+                if (loc.is_reserved) {
+                    if (loc.reserved_by === memberId) {
+                        marker.setIcon(greenIcon); // Marqueur spécifique à l'utilisateur
+                    } else {
+                        marker.setIcon(redIcon); // Marqueur pour les autres
+                    }
+                } else {
+                    marker.setIcon(blueIcon); // Marqueur pour les lieux libres
+                    if (memberId) {
+                        marker.on('click', async () => {
+                            const reserveResponse = await fetch('/reserve', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ member_id: memberId, location_id: loc.id })
+                            });
+                            if (reserveResponse.ok) {
+                                alert('Lieu réservé avec succès !');
+                                marker.setOpacity(0.5);
+                                loadLocations(); // Recharge la table et la carte
+                                loadUserReservations();
+                            } else {
+                                alert('Erreur lors de la réservation.');
+                            }
+                        });
+                    }
+                }
+    
+                // Exclude locations already reserved
+                if (loc.reserved_by !== null) {
+                    return;
+                }
+
+                // Ajouter la ligne au tableau
+                const row = document.createElement('tr');
+                if (loc.is_reserved) {
+                    row.classList.add('reserved');
+                }
+                row.innerHTML = `
+                    <td>${loc.name}</td>
+                    <td>${loc.address}</td>
+                `;
+
+                // Add "Reserve" button in the action column
+                const actionCell = document.createElement('td');
+                const reserveButton = document.createElement('button');
+                reserveButton.textContent = 'Réserver';
+                reserveButton.classList.add('btn', 'btn-primary', 'btn-sm');
+                
+                // Add click handler for the button
+                reserveButton.addEventListener('click', async () => {
+                    const reserveResponse = await fetch('/reserve', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ member_id: memberId, location_id: loc.id })
+                    });
+
+                    if (reserveResponse.ok) {
+                        alert(`Lieu "${loc.name}" réservé avec succès !`);
+                        loadLocations(); // Reload the table to update availability
+                        loadUserReservations();
+                    } else {
+                        alert('Erreur : Ce lieu est déjà réservé.');
+                    }
+                });
+
+                actionCell.appendChild(reserveButton);
+                row.appendChild(actionCell);
+
+                locationsTable.appendChild(row);
+            });
+        }
+
+        // behaviour of email button
+        document.getElementById('emailButton').addEventListener('click', () => {
+            const email = 'pierre.lanquetot@philhar.com';
+            const subject = 'Commentaire ou Suggestion';
+            const body = 'Bonjour,\n\nVoici mon commentaire ou suggestion :\n\n';
+            window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        });
+
+        // behaviour of "download" button
+        document.getElementById('downloadButton').addEventListener('click', () => {
+            const rows = document.querySelectorAll('#userReservations tr');
+            let csvContent = 'Nom,Localité\n'; // CSV header
+
+            rows.forEach(row => {
+                const columns = row.querySelectorAll('td');
+                const rowContent = Array.from(columns).map(col => col.textContent).join(',');
+                csvContent += rowContent + '\n';
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'lieux_reserves.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // comportement du bouton "imprimer"
+        document.getElementById('printButton').addEventListener('click', () => {
+            const tableContent = document.querySelector('#userReservations').parentElement.outerHTML;
+
+            const printWindow = window.open('', '', 'width=800,height=600');
+            printWindow.document.write('<html><head><title>Vos lieux réservés</title></head><body>');
+            printWindow.document.write('<h3>Vos lieux réservés</h3>');
+            printWindow.document.write(tableContent);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.print();
+        });
+
+        document.getElementById('searchName').addEventListener('input', async (event) => {
+            const query = event.target.value.trim();
+            if (query.length < 2) {
+                document.getElementById('suggestions').classList.add('d-none');
+                return;
+            }
+
+            const response = await fetch(`/members/search?q=${query}`);
+            if (response.ok) {
+                const suggestions = await response.json();
+                const suggestionsList = document.getElementById('suggestions');
+                suggestionsList.innerHTML = ''; // Réinitialise les suggestions
+
+                suggestions.forEach(member => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-group-item';
+                    listItem.textContent = `${member.first_name} ${member.last_name}`;
+                    listItem.addEventListener('click', () => {
+                        // Remplit les champs "Nom" et "Prénom"
+                        document.getElementById('lastName').value = member.last_name;
+                        document.getElementById('firstName').value = member.first_name;
+
+                        // Cache les suggestions
+                        document.getElementById('suggestions').classList.add('d-none');
+
+                        // (Optionnel) Remplissez aussi une variable globale pour gérer l'utilisateur sélectionné
+                        memberId = member.id;
+                    });
+                    suggestionsList.appendChild(listItem);
+                });
+
+                suggestionsList.classList.remove('d-none'); // Affiche les suggestions
+            }
+        });
+
+
+        // Fonction pour s'inscrire
+        document.getElementById('registerBtn').addEventListener('click', async () => {
+            const lastName = document.getElementById('lastName').value;
+            const firstName = document.getElementById('firstName').value;
+    
+            if (!lastName || !firstName) {
+                alert('Veuillez entrer votre nom et prénom.');
+                return;
+            }
+
+            const response = await fetch('/members/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ first_name: firstName, last_name: lastName })
+            });
+    
+            if (response.ok) {
+                const data = await response.json();
+                memberId = data.id;
+
+                // Affiche le message de confirmation
+                const userInfo = document.getElementById('userInfo');
+                userInfo.textContent = `Vous êtes inscrit en tant que ${firstName} ${lastName}`;
+                userInfo.classList.remove('d-none');
+
+                // Cacher le formulaire de recherche et suggestions
+                document.getElementById('searchLabel').style.display = 'none'; // Masquer le texte
+                document.getElementById('searchName').style.display = 'none';
+                document.getElementById('suggestions').style.display = 'none';
+                document.getElementById('registration').style.display = 'none'; // Cache aussi le formulaire "Nom/Prénom"
+
+                alert(`Bienvenue, ${firstName} ${lastName} !`);
+                loadLocations(); // Charger les lieux avec interactions activées
+                loadUserReservations();
+            }
+       });
+    
+        async function loadUserReservations() {
+            const response = await fetch(`/locations/user/${memberId}`);
+            const reservations = await response.json();
+
+            const userReservations = document.getElementById('userReservations');
+            userReservations.innerHTML = ''; // Efface les données existantes
+
+            reservations.forEach(reservation => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${reservation.name}</td>
+                    <td>${reservation.address}</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="confirmUnreserve(${reservation.id})">Dé-réserver</button>
+                    </td>
+                `;
+                userReservations.appendChild(row);
+            });
+        }
+
+        async function confirmUnreserve(locationId) {
+            if (confirm('Voulez-vous vraiment dé-réserver ce lieu ?')) {
+                const response = await fetch(`/locations/unreserve/${locationId}`, { method: 'POST' });
+                if (response.ok) {
+                    alert('Lieu dé-réservé avec succès !');
+                    loadLocations();
+                    loadUserReservations();
+                } else {
+                    alert('Erreur lors de la dé-réservation.');
+                }
+            }
+        }
+
+
+        // Charger les lieux au démarrage
+        loadLocations();
+    </script>
+</body>
+</html>

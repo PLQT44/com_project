@@ -1,4 +1,4 @@
-ID,City,Validated_Address,Latitude,Longitude,Status
+name,city,address,latitude,longitude,Status
 Médiathèque René Guy Cadou,BASSE GOULAINE,"Pl. de la Chantrie, 44115 Basse-Goulaine, France",47.2161682,-1.4657301,Valid (Concordant)
 Bibliothèque,BOUAYE,"44830 Bouaye, France",47.143462,-1.694164,Valid (Concordant)
 ECOLE BOSCEENNE DE MUSIQUE ET DE DANSE,BOUAYE,"2 Rue du Stade, 44830 Bouaye, France",47.1487626,-1.6963872,Valid (Concordant)
@@ -29,8 +29,8 @@ ECOLE DE MUSIQUE TOUTES AIDES,NANTES,"1 Rue Jules Brechoir, 44000 Nantes, France
 CONSERVATOIRE A RAYONNEMENT REGIONAL - CNR,NANTES,"4 Rue Gaëtan Rondeau, 44200 Nantes, France",47.2079428,-1.5331106,Valid (Concordant)
 ECOLE NANTAISE DE CUIVRES,NANTES,"39 Rue Félix Thomas, 44000 Nantes, France",47.2313756,-1.5526584,Valid (Concordant)
 Harmonie de Toutes Aides  ,NANTES,"9 Rue des Epinettes, 44300 Nantes, France",47.2282943,-1.5201002,Valid (Concordant)
-Médiathèque Jacques Demy,NANTES Cedex 1,"24 Quai de la Fosse, 44000 Nantes, France",47.211327,-1.5621506,Valid (Concordant)
-Médiathèque Breil-Malville,NANTES Cedex 1,"37 Rue des Plantes, 44100 Nantes, France",47.2334149,-1.5856564,Valid (Concordant)
+Médiathèque Jacques Demy,NANTES,"24 Quai de la Fosse, 44000 Nantes, France",47.211327,-1.5621506,Valid (Concordant)
+Médiathèque Breil-Malville,NANTES,"37 Rue des Plantes, 44100 Nantes, France",47.2334149,-1.5856564,Valid (Concordant)
 ECOLE DE MUSIQUE,NORT SUR ERDRE,"3 Bd Paul Doumer, 44390 Nort-sur-Erdre, France",47.4379213,-1.4990976,Valid (Concordant)
 LA MANO - SECTION MUSIQUE,NOZAY,"44170 Nozay, France",47.564751,-1.626916,Valid (Concordant)
 Mairie,ORVAULT,"9 Rue Marcel Deniau, 44700 Orvault, France",47.270789,-1.6246736,Valid (Concordant)
