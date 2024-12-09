@@ -1,0 +1,4 @@
+runtime: python310
+env: standard
+entrypoint: gunicorn -b :$PORT app:app
+instance_class: F1

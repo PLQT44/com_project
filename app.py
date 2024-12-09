@@ -10,24 +10,15 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
-conn = psycopg2.connect(
-    host="10.118.112.3"  # Replace with the Private IP of your instance
-    database="map_reservations_db",
-    user="flask_user",
-    password=os.getenv('DB_PASSWORD')
-)
 
-# Charger les variables d'environnement
-load_dotenv()
 
 app = Flask(__name__)
 
 app.config['STATIC_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 
-# Configurer la base de données PostgreSQL
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+# Configure Cloud SQL connection
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:K|*%kL(N:H=k.6$,@/decisive-depth-432308-v7:europe-west9:my-postgres-db/my_map_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 db = SQLAlchemy(app)
 
 app.debug = True
