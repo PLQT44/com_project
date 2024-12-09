@@ -3,15 +3,21 @@ import os
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
 
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
+# Charger les variables d'environnement
+load_dotenv()
+
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
+
+# Configurer la base de données PostgreSQL
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['STATIC_FOLDER'] = './static'
+
 db = SQLAlchemy(app)
 
 app.debug = True
