@@ -4,10 +4,18 @@ from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+import psycopg2
 
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
+
+conn = psycopg2.connect(
+    host="10.118.112.3"  # Replace with the Private IP of your instance
+    database="map_reservations_db",
+    user="flask_user",
+    password=os.getenv('DB_PASSWORD')
+)
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -60,6 +68,24 @@ def setup_database():
     points_csv = os.path.join(app.config['STATIC_FOLDER'], 'points.csv')
     if os.path.exists(points_csv):
         load_locations_from_csv(points_csv)
+
+@app.route('/check-db')
+def check_db():
+    try:
+        conn = psycopg2.connect(
+            host="10.118.112.3",
+            database="map_reservations_db",
+            user="flask_user",
+            password=os.getenv('DB_PASSWORD')
+        )
+        cur = conn.cursor()
+        cur.execute("SELECT NOW();")
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return f"Database connected: {result[0]}"
+    except Exception as e:
+        return f"Error connecting to database: {str(e)}"
 
 # API Endpoints
 @app.route('/')
