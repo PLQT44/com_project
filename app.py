@@ -14,6 +14,8 @@ load_dotenv()
 
 app = Flask(__name__)
 
+app.config['STATIC_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+
 # Configurer la base de données PostgreSQL
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
