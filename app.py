@@ -6,22 +6,19 @@ from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 import psycopg2
 
-import logging
-
-logging.basicConfig(level=logging.DEBUG)
-
-
+load_dotenv()
 
 app = Flask(__name__)
 
+# Configure Cloud SQL connection
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@"
+    f"{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}"
+)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['STATIC_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 
-# Configure Cloud SQL connection
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:K|*%kL(N:H=k.6$,@/decisive-depth-432308-v7:europe-west9:my-postgres-db/my_map_db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-
-app.debug = True
 
 # Models
 class Member(db.Model):
@@ -48,7 +45,6 @@ class Location(db.Model):
 # Initialize Database and Load Static Data
 @app.before_request
 def setup_database():
-    db.create_all()
 
     # Load users.csv
     users_csv = os.path.join(app.config['STATIC_FOLDER'], 'users.csv')
@@ -156,13 +152,10 @@ def members():
 @app.route('/members/verify', methods=['POST'])
 def verify_member():
     data = request.json
-    logging.debug(f"Reçu les données pour vérification : {data}")
     # Vérifie si le membre existe
     member = Member.query.filter_by(first_name=data['first_name'], last_name=data['last_name']).first()
     if member:
-        logging.debug(f"Membre trouvé : {member}")
         return jsonify({'exists': True, 'id': member.id}), 200
-    logging.warning("Membre non trouvé")
     return jsonify({'exists': False}), 404
 
 @app.route('/locations/user/<int:user_id>')
