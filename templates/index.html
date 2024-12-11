@@ -6,7 +6,7 @@
     <title>Répartition des lieux d'affichage</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='CSS/styles.css') }}">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         .reserved {
@@ -128,7 +128,7 @@
                 marker.bindTooltip(loc.name, {
                     permanent: true, // Label par défaut masqué
                     direction: 'top',
-                    offset: [0, -20],
+                    offset: [0, -40],
                     className: loc.is_reserved ? 'tooltip-reserved' : 'tooltip-available',
                     opacity : 0
                 });
@@ -160,12 +160,12 @@
                                 body: JSON.stringify({ member_id: memberId, location_id: loc.id })
                             });
                             if (reserveResponse.ok) {
-                                alert('Lieu réservé avec succès !');
+                                showCustomAlert('Lieu réservé avec succès !');
                                 marker.setOpacity(0.5);
                                 loadLocations(); // Recharge la table et la carte
                                 loadUserReservations();
                             } else {
-                                alert('Erreur lors de la réservation.');
+                                showCustomAlert('Erreur lors de la réservation.');
                             }
                         });
                     }
@@ -201,11 +201,11 @@
                     });
 
                     if (reserveResponse.ok) {
-                        alert(`Lieu "${loc.name}" réservé avec succès !`);
+                        showCustomAlert(`Lieu "${loc.name}" réservé avec succès !`);
                         loadLocations(); // Reload the table to update availability
                         loadUserReservations();
                     } else {
-                        alert('Erreur : Ce lieu est déjà réservé.');
+                        showCustomAlert('Erreur : Ce lieu est déjà réservé.');
                     }
                 });
 
@@ -302,7 +302,7 @@
             const firstName = document.getElementById('firstName').value;
     
             if (!lastName || !firstName) {
-                alert('Veuillez entrer votre nom et prénom.');
+                showCustomAlert('Veuillez entrer votre nom et prénom.');
                 return;
             }
 
@@ -327,12 +327,20 @@
                 document.getElementById('suggestions').style.display = 'none';
                 document.getElementById('registration').style.display = 'none'; // Cache aussi le formulaire "Nom/Prénom"
 
-                alert(`Bienvenue, ${firstName} ${lastName} !`);
+                showCustomAlert(`Bienvenue, ${firstName} ${lastName} !`);
                 loadLocations(); // Charger les lieux avec interactions activées
                 loadUserReservations();
             }
        });
     
+        function showCustomAlert(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'custom-alert';
+            alertDiv.textContent = message;
+            document.body.appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 3000);
+        }
+
         async function loadUserReservations() {
             const response = await fetch(`/locations/user/${memberId}`);
             const reservations = await response.json();
@@ -354,15 +362,13 @@
         }
 
         async function confirmUnreserve(locationId) {
-            if (confirm('Voulez-vous vraiment dé-réserver ce lieu ?')) {
-                const response = await fetch(`/locations/unreserve/${locationId}`, { method: 'POST' });
-                if (response.ok) {
-                    alert('Lieu dé-réservé avec succès !');
-                    loadLocations();
-                    loadUserReservations();
-                } else {
-                    alert('Erreur lors de la dé-réservation.');
-                }
+            const response = await fetch(`/locations/unreserve/${locationId}`, { method: 'POST' });
+            if (response.ok) {
+                showCustomAlert('Lieu dé-réservé avec succès !');
+                loadLocations();
+                loadUserReservations();
+            } else {
+                showCustomAlert('Erreur lors de la dé-réservation.');
             }
         }
 

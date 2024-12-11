@@ -1,4 +1,27 @@
 runtime: python310
+handlers:
+- url: /static/css
+  static_dir: static/css
+  secure: always
+
+- url: /static
+  static_dir: static
+  secure: always
+
+- url: /.*
+  script: auto
+  secure: always
+
 env: standard
 entrypoint: gunicorn -b :$PORT app:app
 instance_class: F1
+
+env_variables:
+  DB_USER: "postgres"
+  DB_PASSWORD: "Hohenbourg_720"
+  DB_NAME: "map_db"
+  DB_HOST: "/cloudsql/philhar-map:europe-west9:map-instance"
+  FLASK_ENV: "production"
+
+beta_settings:
+  cloud_sql_instances: "philhar-map:europe-west9:map-instance"

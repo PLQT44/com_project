@@ -4,20 +4,22 @@ from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from werkzeug.utils import secure_filename
-from dotenv import load_dotenv
 import psycopg2
-
-load_dotenv()
+from sqlalchemy.sql import text
 
 app = Flask(__name__)
 
+print(f"DB_HOST = {os.getenv('DB_HOST')}")
+
 # Configure Cloud SQL connection
 app.config['SQLALCHEMY_DATABASE_URI'] = (
-    f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@"
-    f"{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}"
+    f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@"
+    f"/{os.getenv('DB_NAME')}?host={os.getenv('DB_HOST')}"
 )
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['STATIC_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+
+app.config['STATIC_FOLDER'] = 'static'
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -44,8 +46,10 @@ class Location(db.Model):
     def __repr__(self):
         return self.name
 
+
+"""
 # Initialize Database and Load Static Data
-""" 
+
 @app.before_request
 def setup_database():
 
@@ -58,7 +62,21 @@ def setup_database():
     points_csv = os.path.join(app.config['STATIC_FOLDER'], 'points.csv')
     if os.path.exists(points_csv):
         load_locations_from_csv(points_csv)
- """
+
+"""        
+
+
+@app.route('/test-static')
+def test_static():
+    return f"Static folder is: {app.static_folder}"
+
+@app.route('/check-db')
+def check_db():
+    try:
+        result = db.session.execute(text("SELECT 1")).fetchone()
+        return f"Database connected: {result[0]}"
+    except Exception as e:
+        return f"Error connecting to database: {str(e)}"
 
 # API Endpoints
 @app.route('/')
@@ -183,6 +201,7 @@ def search_members():
         for member in members
     ])
 
+"""
 # Helper Functions
 def load_members_from_csv(filepath):
     with open(filepath, newline='', encoding='utf-8') as csvfile:
@@ -211,6 +230,7 @@ def load_locations_from_csv(filepath):
                 )
                 db.session.add(location)
         db.session.commit()
+"""
 
 if __name__ == '__main__':
     app.run(debug=True)
