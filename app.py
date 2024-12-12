@@ -5,20 +5,46 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from werkzeug.utils import secure_filename
 import psycopg2
+from dotenv import load_dotenv
 from sqlalchemy.sql import text
+from google.cloud.sql.connector import Connector, IPTypes
+import sqlalchemy
+
+# Load environment variables from .env file if it exists
+if os.path.exists('.env'):
+    load_dotenv()
+
+print(f"DB_HOST : {os.getenv('DB_HOST')}")
 
 app = Flask(__name__)
 
-print(f"DB_HOST = {os.getenv('DB_HOST')}")
-
-# Configure Cloud SQL connection
-app.config['SQLALCHEMY_DATABASE_URI'] = (
-    f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@"
-    f"/{os.getenv('DB_NAME')}?host={os.getenv('DB_HOST')}"
-)
+# Database configuration
+if os.getenv('FLASK_ENV') != 'production':
+    # Local development
+    print("Local development environment")
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}"
+else:
+    # Production
+    print("App Engine production environment")
+    
+    connector = Connector()
+    
+    def getconn():
+        return connector.connect(
+            instance_connection_string=os.getenv('DB_HOST'),  # Named parameter
+            driver="pg8000",                                  # Explicit driver
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            db=os.getenv('DB_NAME'),
+            ip_type=IPTypes.PUBLIC                           # Public IP address
+        )
+        
+    app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql+pg8000://"
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'creator': getconn
+    }   
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 app.config['STATIC_FOLDER'] = 'static'
 
 db = SQLAlchemy(app)
@@ -233,4 +259,4 @@ def load_locations_from_csv(filepath):
 """
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=app.config['DEBUG'])

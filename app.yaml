@@ -20,8 +20,9 @@ env_variables:
   DB_USER: "postgres"
   DB_PASSWORD: "Hohenbourg_720"
   DB_NAME: "map_db"
-  DB_HOST: "/cloudsql/philhar-map:europe-west9:map-instance"
+  DB_HOST: "philhar-map:europe-west9:map-instance"
   FLASK_ENV: "production"
+  IS_PRODUCTION: "true"
 
 beta_settings:
   cloud_sql_instances: "philhar-map:europe-west9:map-instance"
